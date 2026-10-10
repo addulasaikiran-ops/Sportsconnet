@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { apiErrorResponse, parseJson } from "@/lib/api/http";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { enforceRateLimit } from "@/lib/api/rate-limit";
 
 const signupSchema = z.object({
   email: z.string().email().max(320),
@@ -14,6 +15,8 @@ const signupSchema = z.object({
 export async function POST(request: Request) {
   try {
     const body = await parseJson(request, signupSchema);
+    const limited = await enforceRateLimit(request, { name: "signup", limit: 5, window: "1 h", scope: "ip", key: "" });
+    if (limited) return limited;
     const supabase = await createSupabaseServerClient();
     const { data, error } = await supabase.auth.signUp({
       email: body.email,
