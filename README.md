@@ -40,6 +40,7 @@ Sportsconnet/
 - Opportunities with type filter and mock application state
 - Messages with local mock conversations
 - Athlete profile with overview/highlights/achievements/about tabs
+- Login and signup forms with UI-only submission feedback at `/login` and `/signup`
 - Notifications, saved items, coaches & clubs, leaderboard and help centre placeholder views
 - Responsive desktop sidebar and mobile bottom navigation
 
@@ -57,4 +58,4 @@ Sportsconnet/
 3. Implement Storage uploads, real messages/realtime, notifications, and opportunity applications.
 4. Add automated tests and production moderation/reporting flows.
 
-All visible interactions in this stage are prototypes and do not persist after refresh.
+All visible interactions in this stage are prototypes and do not persist after refresh. Login and signup do not authenticate users yet; they show prototype feedback until Supabase Auth is connected.
