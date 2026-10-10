@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Activity, Bell, Bookmark, BriefcaseBusiness, Check, ChevronDown, CircleHelp,
@@ -50,7 +50,7 @@ function Sidebar({ active, onNavigate, mobileNavOpen }: { active: string; onNavi
     <div className="sidebar-brand"><Brand /></div>
     <div className="workspace-label">YOUR SPACE</div>
     <nav className="main-nav" aria-label="Main navigation">
-      {navItems.map(({ label, icon: Icon }) => <button key={label} className={`nav-item ${active === label ? "active" : ""}`} onClick={() => onNavigate(label)}><Icon size={19} /><span>{label}</span>{label === "Messages" && <span className="nav-count">3</span>}</button>)}
+      {navItems.map(({ label, icon: Icon }) => <button key={label} className={`nav-item ${active === label ? "active" : ""}`} aria-current={active === label ? "page" : undefined} onClick={() => onNavigate(label)}><Icon size={19} /><span>{label}</span>{label === "Messages" && <span className="nav-count">3</span>}</button>)}
     </nav>
     <div className="sidebar-divider" />
     <div className="workspace-label">YOUR NETWORK</div>
@@ -71,9 +71,25 @@ function Sidebar({ active, onNavigate, mobileNavOpen }: { active: string; onNavi
 }
 
 function Topbar({ onMenu, menuOpen, query, setQuery, onNavigate }: { onMenu: () => void; menuOpen: boolean; query: string; setQuery: (value: string) => void; onNavigate: (label: string) => void }) {
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleShortcut = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        searchRef.current?.focus();
+      }
+      if (event.key === "Escape" && document.activeElement === searchRef.current) {
+        searchRef.current?.blur();
+      }
+    };
+    window.addEventListener("keydown", handleShortcut);
+    return () => window.removeEventListener("keydown", handleShortcut);
+  }, []);
+
   return <header className="topbar">
     <button className="mobile-menu icon-button" onClick={onMenu} aria-label="Open menu" aria-expanded={menuOpen}><Menu size={21} /></button>
-    <div className="top-search"><Search size={18} /><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search athletes, coaches, sports..." aria-label="Search" /><kbd>⌘ K</kbd></div>
+    <div className="top-search"><Search size={18} /><input ref={searchRef} value={query} onChange={e => setQuery(e.target.value)} placeholder="Search athletes, coaches, sports..." aria-label="Search athletes, coaches, and sports" /><kbd aria-hidden="true">⌘ K</kbd></div>
     <div className="topbar-actions"><button className="icon-button notification-button" aria-label="Notifications" onClick={() => onNavigate("Notifications")}><Bell size={19} /><i /></button><span className="topbar-divider" /><button className="top-user" onClick={() => onNavigate("My profile")}><Avatar initials="SK" color="avatar-navy" size="small" /><span>Sai Kiran</span><ChevronDown size={15} /></button></div>
   </header>;
 }
@@ -188,13 +204,14 @@ export default function SportsConnectShell({ initialScreen = "Home" }: { initial
   const toggleFollow = (name: string) => setFollowed(old => old.includes(name) ? old.filter(n => n !== name) : [...old, name]);
 
   return <div className="app-shell">
+    <a className="skip-link" href="#main-content">Skip to main content</a>
     {mobileNavOpen && <button className="mobile-scrim" aria-label="Close navigation" onClick={() => setMobileNavOpen(false)} />}
     <Sidebar active={active} onNavigate={navigate} mobileNavOpen={mobileNavOpen} />
     <div className="app-main"><Topbar onMenu={() => setMobileNavOpen(!mobileNavOpen)} menuOpen={mobileNavOpen} query={query} setQuery={setQuery} onNavigate={navigate} />
-      <main className="content-wrap">
+      <main id="main-content" className="content-wrap" tabIndex={-1}>
         {active === "Home" ? <div className="dashboard-grid"><section className="feed-column"><div className="welcome-row"><div><div className="eyebrow"><span className="live-dot" /> YOUR SPORTS COMMUNITY</div><h1>Good morning, Sai <span className="wave">✦</span></h1><p>Your next breakthrough starts with showing up.</p></div><div className="streak-pill"><Flame size={16} /><span><strong>7 day streak</strong><small>Keep it going!</small></span></div></div><section className="welcome-banner"><div className="banner-content"><span className="banner-kicker"><Zap size={13} /> YOUR POTENTIAL IS YOUR POWER</span><h2>Every great athlete<br />starts <em>somewhere.</em></h2><p>Show your progress. Find your people.<br />Make your next move.</p><button className="banner-button" onClick={() => navigate("My profile")}>Build your athlete profile <span>→</span></button></div><div className="banner-art"><div className="banner-ring ring-one" /><div className="banner-ring ring-two" /><div className="banner-orb"><Trophy size={53} strokeWidth={1.25} /></div><span className="art-label art-label-one">TRAIN. GROW. REPEAT.</span><span className="art-label art-label-two">SC / 001</span><div className="art-stats"><span>YOUR NEXT<br /><b>LEVEL</b></span><span className="art-stat-arrow">↗</span></div></div><div className="banner-index">01 <span>/ 03</span></div></section><div className="section-heading feed-heading"><div><h2>Your feed</h2><p>Inspiration from your sports community</p></div><button className="button button-outline button-small" onClick={() => navigate("Discover")}><Compass size={15} /> Explore</button></div><div className="feed-tabs">{["For you", "Following", "Trending"].map(tab => <button key={tab} onClick={() => setFeedTab(tab)} className={feedTab === tab ? "feed-tab-active" : ""}>{tab}{tab === "Trending" && <Flame size={13} />}</button>)}</div><CreatePost onPost={text => setPosts(old => [{ name: "Sai Kiran", initials: "SK", color: "avatar-navy", role: "Athlete · Your update", time: "Just now", text, image: "", likes: 0, comments: 0, badge: "" }, ...old])} />{posts.map((post, i) => <PostCard key={post.name + post.time + i} post={post} index={i} />)}<button className="load-more" onClick={() => setPosts(old => [...old, ...feedPosts])}>Show more updates <ChevronDown size={16} /></button></section><RightRail onNavigate={navigate} onFollow={toggleFollow} followed={followed} /></div> : active === "Discover" ? <DiscoverView query={query} onNavigate={navigate} /> : active === "Opportunities" ? <OpportunitiesView query={query} /> : active === "Messages" ? <MessagesView /> : active === "My profile" || active === "Athlete profile" ? <ProfileView /> : <SimpleView title={pageTitle} />}
       </main>
-      <nav className="mobile-bottom-nav" aria-label="Mobile navigation">{[{ label: "Home", icon: Home }, { label: "Discover", icon: Compass }, { label: "Opportunities", icon: BriefcaseBusiness }, { label: "Messages", icon: MessageCircle }, { label: "My profile", icon: UserRound }].map(({ label, icon: Icon }) => <button key={label} className={active === label ? "mobile-active" : ""} onClick={() => navigate(label)}><Icon size={20} /><span>{label === "Opportunities" ? "Explore" : label === "My profile" ? "Profile" : label}</span></button>)}</nav>
+      <nav className="mobile-bottom-nav" aria-label="Mobile navigation">{[{ label: "Home", icon: Home }, { label: "Discover", icon: Compass }, { label: "Opportunities", icon: BriefcaseBusiness }, { label: "Messages", icon: MessageCircle }, { label: "My profile", icon: UserRound }].map(({ label, icon: Icon }) => <button key={label} className={active === label ? "mobile-active" : ""} aria-current={active === label ? "page" : undefined} onClick={() => navigate(label)}><Icon size={20} /><span>{label === "Opportunities" ? "Explore" : label === "My profile" ? "Profile" : label}</span></button>)}</nav>
     </div>
   </div>;
 }
