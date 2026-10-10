@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import "./kinetic-stadium.css";
 
 export const metadata: Metadata = {
   title: "SportsConnect — Your talent. Your team. Your future.",
@@ -9,7 +10,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#f7f9fc"
+  themeColor: "#F8FAFC"
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
