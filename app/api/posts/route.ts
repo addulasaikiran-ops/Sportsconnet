@@ -18,15 +18,30 @@ export async function GET(request: Request) {
     const { data, error, count } = await supabase
       .from("posts")
       .select(
-        "id, content, visibility, author_id, created_at, updated_at, author:profiles!posts_author_id_fkey(id, username, full_name, avatar_url, primary_sport, is_verified), media:post_media(id, url, media_type, sort_order)",
+        "id, content, visibility, author_id, created_at, updated_at, author:profiles!posts_author_id_fkey(id, username, full_name, avatar_url, primary_sport, is_verified), media:post_media(id, url, storage_path, media_type, sort_order)",
         { count: "exact" }
       )
       .order("created_at", { ascending: false })
       .range((page - 1) * limit, page * limit - 1);
 
     if (error) throw new Error("Could not load feed.");
+
+    const posts = await Promise.all((data ?? []).map(async (post) => {
+      const media = await Promise.all((post.media ?? []).map(async (item) => {
+        if (!item.storage_path) return item;
+        const { data: signedData, error: signedError } = await supabase
+          .storage.from("post-media").createSignedUrl(item.storage_path, 3600);
+        return {
+          ...item,
+          url: signedError ? null : signedData.signedUrl,
+          signedUrlExpiresIn: signedError ? null : 3600
+        };
+      }));
+      return { ...post, media };
+    }));
+
     return NextResponse.json({
-      posts: data ?? [],
+      posts,
       page,
       limit,
       total: count ?? 0,
