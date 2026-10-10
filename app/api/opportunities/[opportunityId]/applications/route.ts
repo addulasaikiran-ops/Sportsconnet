@@ -1,11 +1,36 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { apiErrorResponse, isUuid, parseJson, requireUser } from "@/lib/api/http";
+import { apiErrorResponse, isUuid, parseJson, positiveInt, requireUser } from "@/lib/api/http";
 
 type RouteContext = { params: Promise<{ opportunityId: string }> };
 const applicationSchema = z.object({
   coverNote: z.string().trim().max(2000).default("")
 });
+
+export async function GET(request: Request, context: RouteContext) {
+  try {
+    const { opportunityId } = await context.params;
+    if (!isUuid(opportunityId)) {
+      return NextResponse.json({ error: "Invalid opportunity ID." }, { status: 400 });
+    }
+
+    const { supabase } = await requireUser();
+    const url = new URL(request.url);
+    const limit = positiveInt(url.searchParams.get("limit"), 20, 50);
+    const page = Math.max(1, positiveInt(url.searchParams.get("page"), 1, 100000));
+    const { data, error, count } = await supabase
+      .from("opportunity_applications")
+      .select("id, opportunity_id, applicant_id, cover_note, status, created_at, applicant:profiles!opportunity_applications_applicant_id_fkey(id, username, full_name, avatar_url, primary_sport, is_verified)", { count: "exact" })
+      .eq("opportunity_id", opportunityId)
+      .order("created_at", { ascending: false })
+      .range((page - 1) * limit, page * limit - 1);
+
+    if (error) throw new Error("Could not load applications.");
+    return NextResponse.json({ applications: data ?? [], page, limit, total: count ?? 0 });
+  } catch (error) {
+    return apiErrorResponse(error);
+  }
+}
 
 export async function POST(request: Request, context: RouteContext) {
   try {
