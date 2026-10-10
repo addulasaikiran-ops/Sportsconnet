@@ -69,9 +69,11 @@ All API routes are implemented with Next.js App Router Route Handlers. Authentic
 | POST, DELETE | `/api/posts/:postId/reactions` | Add/change/remove a reaction | Yes |
 | GET, POST | `/api/posts/:postId/comments` | List/add comments | POST: Yes |
 | GET | `/api/users` | Search public profiles by name, role, sport, location | No |
+| GET | `/api/users/:userId` | Read a public profile by UUID or username | No |
 | POST, DELETE | `/api/users/:userId/follow` | Follow/unfollow a profile | Yes |
 | GET, POST | `/api/opportunities` | Search/list and create opportunities | POST: Yes |
-| POST | `/api/opportunities/:opportunityId/applications` | Apply to an open opportunity | Yes |
+| GET, PATCH, DELETE | `/api/opportunities/:opportunityId` | Read opportunity; edit/delete as owner | PATCH/DELETE: Yes |
+| GET, POST | `/api/opportunities/:opportunityId/applications` | List visible applications / apply | Yes |
 | GET, POST | `/api/conversations` | List or start a direct conversation | Yes |
 | GET, POST | `/api/conversations/:conversationId/messages` | List/send private messages | Yes |
 | GET, PATCH | `/api/notifications` | List notifications and mark them read | Yes |
@@ -100,8 +102,10 @@ Sportsconnet/
 │   │   ├── posts/route.ts
 │   │   ├── posts/[postId]/{comments,reactions}/route.ts
 │   │   ├── users/route.ts
+│   │   ├── users/[userId]/route.ts
 │   │   ├── users/[userId]/follow/route.ts
 │   │   ├── opportunities/route.ts
+│   │   ├── opportunities/[opportunityId]/route.ts
 │   │   ├── opportunities/[opportunityId]/applications/route.ts
 │   │   ├── conversations/route.ts
 │   │   ├── conversations/[conversationId]/messages/route.ts
