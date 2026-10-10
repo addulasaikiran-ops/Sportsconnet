@@ -44,8 +44,8 @@ function Avatar({ initials, color, size = "normal" }: { initials: string; color:
   return <span className={`avatar ${color} avatar-${size}`}>{initials}</span>;
 }
 
-function Sidebar({ active, onNavigate }: { active: string; onNavigate: (label: string) => void }) {
-  return <aside className="sidebar">
+function Sidebar({ active, onNavigate, mobileNavOpen }: { active: string; onNavigate: (label: string) => void; mobileNavOpen: boolean }) {
+  return <aside className={`sidebar ${mobileNavOpen ? "sidebar-open" : ""}`}>
     <div className="sidebar-brand"><Brand /></div>
     <div className="workspace-label">YOUR SPACE</div>
     <nav className="main-nav" aria-label="Main navigation">
