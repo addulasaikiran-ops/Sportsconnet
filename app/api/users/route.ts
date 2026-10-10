@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { apiErrorResponse, positiveInt } from "@/lib/api/http";
+import { enforceRateLimit } from "@/lib/api/rate-limit";
 
 export async function GET(request: Request) {
   try {
