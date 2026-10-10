@@ -37,10 +37,10 @@ export async function PATCH(request: Request) {
       .is("read_at", null);
 
     if (body.all !== true && body.ids?.length) query = query.in("id", body.ids);
-    const { error, count } = await query.select("id");
+    const { error, data } = await query.select("id");
 
     if (error) throw new Error("Could not update notifications.");
-    return NextResponse.json({ ok: true, updated: count ?? undefined });
+    return NextResponse.json({ ok: true, updated: data?.length ?? 0 });
   } catch (error) {
     return apiErrorResponse(error);
   }
