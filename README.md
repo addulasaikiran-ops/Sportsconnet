@@ -36,6 +36,12 @@ This repository contains the Next.js + TypeScript frontend, server-side API Rout
 
 The health endpoint at `/api/health` reports whether the expected Supabase environment variables are present. It does not reveal any keys or verify that database migrations have been applied.
 
+## Supabase project selection
+
+The connected Supabase workspace currently exposes a project named `Moog-1.0` at `https://jtphbubpqiqgwvmhzyoy.supabase.co`. Its existing schema includes `Share`, `RateLimit`, `AbuseReport` and Prisma migrations, so it is not assumed to be the SportsConnect database. Do not apply the SportsConnect migration to that project unless you confirm it is intended to host both apps.
+
+The sample env file is prefilled with that project's URL and its **publishable key** for convenience. Replace these values with a dedicated SportsConnect project before testing live backend features.
+
 ## Configure the database
 
 The schema migration is stored at:
