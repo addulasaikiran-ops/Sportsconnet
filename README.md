@@ -40,7 +40,7 @@ The health endpoint at `/api/health` reports whether the expected Supabase envir
 
 The schema migration is stored at:
 
-`supabase/migrations/202610100001_initial_sportsconnect_schema.sql`
+`supabase/migrations/20261010000100_initial_sportsconnect_schema.sql`
 
 Use a Supabase project intended for SportsConnect. After installing/using the Supabase CLI and authenticating, link your chosen project and apply the migration:
 
