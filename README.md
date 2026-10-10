@@ -133,6 +133,37 @@ Use `lib/observability/logger.ts` for structured server logs. It writes JSON rec
 
 No Sentry project or credentials have been created/configured, and no deployment has been performed. Error reporting remains disabled until a DSN is supplied; source-map upload needs the optional Sentry build credentials.
 
+## Monitoring and email alerts
+
+The GitHub Actions workflow at `.github/workflows/monitoring.yml` runs every five minutes (and can be run manually). It requests `/api/health`, alerts when the endpoint is unavailable, returns a non-200 response, or takes longer than two seconds. The health endpoint checks Supabase/PostgREST reachability and reports whether the Upstash rate-limit store is configured/reachable. In production, the endpoint is unhealthy when the rate-limit store is missing or unavailable because API rate limiting fails closed.
+
+### Configure email delivery
+
+In GitHub, open **Settings → Secrets and variables → Actions** for this repository and add these repository secrets:
+
+- `MONITOR_BASE_URL`: the deployed application's origin, e.g. `https://your-domain.example` (no trailing path; monitoring will append `/api/health`).
+- `ALERT_SMTP_SERVER`: SMTP server hostname from your email provider.
+- `ALERT_SMTP_PORT`: SMTP port, usually `465` for implicit TLS or `587` for STARTTLS as supported by the provider.
+- `ALERT_SMTP_USERNAME`: SMTP login.
+- `ALERT_SMTP_PASSWORD`: SMTP password or provider-issued app password.
+- `ALERT_EMAIL_FROM`: sender address permitted by the SMTP account.
+- `ALERT_EMAIL_TO`: destination mailbox for alerts.
+
+Use a dedicated mailbox or transactional email provider and an app password; never use your normal account password if the provider supports app passwords. Do not put credentials in `.env.example`, code, workflow files, or commit messages.
+
+### What this checks and what still needs external setup
+
+- **Application availability and latency:** scheduled health checks, 5-minute cadence, 2-second response threshold.
+- **Database:** health endpoint probes Supabase PostgREST without returning table data.
+- **Rate-limit store:** probes Upstash Redis when configured; in production, missing/unreachable Redis makes the health endpoint return 503.
+- **Application exceptions:** Sentry is already integrated, but Sentry needs a project DSN and alert rules.
+- **Security signals:** configure Sentry alerts for new/high-impact errors and Supabase Auth/database security alerts in their respective dashboards. The workflow does not yet calculate a rolling 5xx or 429 rate, and it does not replace database audit-log review.
+- **Performance:** this is a basic uptime/latency probe, not full request-level p95 tracking. Use Sentry performance data and hosting analytics for deeper latency and resource signals.
+
+### Important limitations
+
+This workflow sends an email for every failed scheduled check, so a prolonged outage can generate repeated messages. Tune or add a cooldown/deduplication mechanism before relying on it for a high-traffic production service. GitHub-hosted scheduled workflows are best-effort and can be delayed; use a dedicated uptime monitor for stricter SLA needs. No external account, email credentials, GitHub secrets, or hosting URL are created by this PR. Monitoring cannot run against the real app until a reachable deployment URL exists. No deployment is performed.
+
 ## Environment variables
 
 `.env.example` documents the supported values:
