@@ -49,9 +49,13 @@ export async function requireUser(): Promise<{
 }
 
 export function positiveInt(value: string | null, fallback: number, max: number) {
-  if (!value) return fallback;
-  const parsed = Number.parseInt(value, 10);
-  if (!Number.isFinite(parsed) || parsed < 1) return fallback;
+  if (value === null || value.trim() === "") return fallback;
+
+  // Number.parseInt accepts partial values such as "25items" and decimals such
+  // as "2.8". Query parameters should be complete positive integers instead.
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed < 1) return fallback;
+
   return Math.min(parsed, max);
 }
 
