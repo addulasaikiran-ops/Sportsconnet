@@ -118,6 +118,21 @@ The app is configured to use Next.js image optimization and the hosting platform
 
 When a profile is edited, a cached public profile may take up to about a minute to refresh under normal conditions. If immediate invalidation becomes necessary, add explicit tag/path revalidation or a purge strategy alongside the profile update endpoint. CDN behavior should be verified after the first deployment; no deployment is performed as part of this change.
 
+## Error tracking and logs
+
+SportsConnect includes optional Sentry instrumentation for browser, Node.js server, Edge runtime, unhandled request errors, and root-level application errors. To enable reporting:
+
+1. Create a Sentry project using its Next.js platform setup at https://sentry.io/.
+2. Copy the project DSN into `NEXT_PUBLIC_SENTRY_DSN` and `SENTRY_DSN`. Reporting stays disabled when no DSN is set.
+3. Set `SENTRY_ORG`, `SENTRY_PROJECT`, and `SENTRY_AUTH_TOKEN` only in the build environment if you want source-map uploads. Keep the auth token server-side and never commit it.
+4. Optionally set `APP_ENV` and `NEXT_PUBLIC_APP_ENV` to label staging/production events.
+
+Sentry tracing is sampled at 10% by default to limit volume. The integration disables default PII collection and strips request query strings, cookies, request bodies, and sensitive request headers from error events. Review your Sentry project privacy and retention settings before collecting production events.
+
+Use `lib/observability/logger.ts` for structured server logs. It writes JSON records with timestamp, severity, service and event fields; errors can also be sent to Sentry. Pass only safe diagnostic metadata (for example route, status code, and request ID)—never passwords, access tokens, cookies, private messages, or raw request bodies. Platform stdout/stderr logs remain available in the hosting provider's log viewer. Sentry does not automatically collect every informational log line.
+
+No Sentry project or credentials have been created/configured, and no deployment has been performed. Error reporting remains disabled until a DSN is supplied; source-map upload needs the optional Sentry build credentials.
+
 ## Environment variables
 
 `.env.example` documents the supported values:
@@ -125,8 +140,11 @@ When a profile is edited, a cached public profile may take up to about a minute 
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (preferred)
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` (legacy fallback)
+- `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` (server-side rate limiting)
+- `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_DSN` (optional error reporting)
+- `SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_AUTH_TOKEN` (optional source-map upload)
 
-Only use a publishable/anon key in these variables. Never expose the Supabase `service_role` or secret key in client code or any `NEXT_PUBLIC_*` variable.
+Only use a publishable/anon key in Supabase `NEXT_PUBLIC_*` variables. Never expose the Supabase `service_role` or secret key in client code or any `NEXT_PUBLIC_*` variable.
 
 ## File structure
 
@@ -148,37 +166,20 @@ Sportsconnet/
 │   │   ├── conversations/route.ts
 │   │   ├── conversations/[conversationId]/messages/route.ts
 │   │   └── notifications/route.ts
-│   ├── page.tsx
-│   ├── layout.tsx
-│   ├── globals.css
-│   ├── discover/page.tsx
-│   ├── opportunities/page.tsx
-│   ├── messages/page.tsx
-│   ├── saved/page.tsx
-│   ├── notifications/page.tsx
-│   ├── profile/page.tsx
-│   ├── athletes/page.tsx
-│   ├── athletes/[username]/page.tsx
-│   ├── coaches-clubs/page.tsx
-│   ├── leaderboard/page.tsx
-│   ├── help/page.tsx
-│   ├── login/page.tsx
-│   └── signup/page.tsx
-├── components/
-│   ├── sportsconnect-shell.tsx
-│   └── auth-form.tsx
+│   ├── global-error.tsx
+│   └── ...
 ├── lib/
 │   ├── api/{error,http}.ts
+│   ├── observability/logger.ts
 │   └── supabase/server.ts
-├── supabase/
-│   ├── config.toml
-│   └── migrations/
-│       ├── 20261010030035_initial_sportsconnect_schema.sql
-│       └── 20261010030207_harden_sportsconnect_schema.sql
+├── sentry.client.config.ts
+├── sentry.server.config.ts
+├── sentry.edge.config.ts
+├── instrumentation.ts
+├── instrumentation-client.ts
 ├── .env.example
 ├── .github/workflows/ci.yml
-├── package.json
-└── README.md
+└── package.json
 ```
 
 ## Validation commands
