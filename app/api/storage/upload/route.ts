@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { apiErrorResponse, isUuid, requireUser } from "@/lib/api/http";
+import { enforceRateLimit } from "@/lib/api/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -23,6 +24,8 @@ const postTypes: Record<string, { extension: string; mediaType: "image" | "video
 export async function POST(request: Request) {
   try {
     const { supabase, user } = await requireUser();
+    const limited = await enforceRateLimit(request, { name: "upload", limit: 10, window: "1 h", scope: "user", key: user.id });
+    if (limited) return limited;
     const form = await request.formData();
     const kind = form.get("kind");
     const candidate = form.get("file");

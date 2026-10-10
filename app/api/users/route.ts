@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { apiErrorResponse, positiveInt } from "@/lib/api/http";
+import { enforceRateLimit } from "@/lib/api/rate-limit";
 
 export async function GET(request: Request) {
   try {
+    const limited = await enforceRateLimit(request, { name: "profile-search", limit: 60, window: "1 m", scope: "ip", key: "" });
+    if (limited) return limited;
     const url = new URL(request.url);
     const limit = positiveInt(url.searchParams.get("limit"), 20, 50);
     const page = Math.max(1, positiveInt(url.searchParams.get("page"), 1, 100000));
