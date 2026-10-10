@@ -39,6 +39,8 @@ export async function POST(request: Request, context: RouteContext) {
     }
 
     const { supabase, user } = await requireUser();
+    const limited = await enforceRateLimit(request, { name: "message-send", limit: 30, window: "1 m", scope: "user", key: user.id });
+    if (limited) return limited;
     const body = await parseJson(request, messageSchema);
     const { data, error } = await supabase
       .from("messages")
