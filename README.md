@@ -169,4 +169,4 @@ A GitHub Actions workflow also runs lint and a production build on pushes to `ma
 - Login and signup call the new Supabase Auth API endpoints. Email confirmation depends on your Supabase Auth settings.
 - Feed, discover, messages and opportunities screens still use mock data until the UI is wired to the new endpoints.
 - Authenticated uploads are available at `POST /api/storage/upload`: send multipart form data with `kind=avatar` and `file`, or `kind=post-media`, `postId`, and `file`. Avatar images are limited to 5 MB; post images/videos are limited to 100 MB. Post-media URLs are signed for one hour by the feed API and should be refreshed when they expire.
-- Before production, add rate limiting/abuse protection, password recovery, moderation/report flows, storage upload rules, test coverage and monitoring.
+- Before production, configure shared rate limiting, password recovery, moderation/report flows, storage upload rules, test coverage and monitoring.
