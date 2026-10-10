@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { api, errorMessage } from "@/lib/client/api";
 import {
   Activity, Bell, Bookmark, BriefcaseBusiness, Check, ChevronDown, CircleHelp,
   Compass, Ellipsis, Filter, Flame, Heart, Home, MapPin, Menu, MessageCircle,
@@ -10,7 +11,8 @@ import {
 } from "lucide-react";
 
 type Profile = { name: string; role: string; sport: string; location: string; initials: string; color: string; verified?: boolean };
-type Opportunity = { title: string; org: string; type: string; location: string; deadline: string; tag: string };
+type Opportunity = { id?: string; title: string; org: string; type: string; location: string; deadline: string; tag: string };
+type FeedPost = { id?: string; name: string; initials: string; color: string; role: string; time: string; text: string; image: string; likes: number; comments: number; badge: string };
 
 const athletes: Profile[] = [
   { name: "Arjun Reddy", role: "Cricket · All-rounder", sport: "Cricket", location: "Hyderabad, India", initials: "AR", color: "avatar-blue", verified: true },
@@ -24,7 +26,7 @@ const opportunities: Opportunity[] = [
   { title: "Athletics development program", org: "National Performance Centre", type: "Scholarship", location: "Bengaluru, Karnataka", deadline: "Closes in 12 days", tag: "ATHLETICS" }
 ];
 
-const feedPosts = [
+const feedPosts: FeedPost[] = [
   { name: "Rohan Sharma", initials: "RS", color: "avatar-green", role: "Cricket · Fast bowler", time: "2h", text: "Six weeks of early mornings, hard sessions, and showing up even when it was tough. Happy to share that I recorded a new personal best today. The work continues. 💪", image: "cricket", likes: 128, comments: 18, badge: "ATHLETE SPOTLIGHT" },
   { name: "Ananya Patel", initials: "AP", color: "avatar-purple", role: "Athletics · 400m sprinter", time: "5h", text: "A reminder for every young athlete: your progress isn't always linear. Trust your training, celebrate the small wins, and keep going. 🏃‍♀️", image: "", likes: 86, comments: 12, badge: "" }
 ];
@@ -103,18 +105,34 @@ function CreatePost({ onPost }: { onPost: (text: string) => void }) {
   </section>;
 }
 
-function PostCard({ post, index }: { post: typeof feedPosts[number]; index: number }) {
+
+function CommentComposer({ postId, onError }: { postId?: string; onError: (message: string) => void }) {
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  return <form className="comment-preview" onSubmit={async event => {
+    event.preventDefault();
+    if (!postId || !text.trim()) { onError("Sign in and refresh the feed to comment on this post."); return; }
+    setBusy(true); onError("");
+    try { await api(`/api/posts/${postId}/comments`, { method: "POST", json: { content: text.trim() } }); setText(""); onError("Comment posted."); }
+    catch (error) { onError(errorMessage(error)); }
+    finally { setBusy(false); }
+  }}><Avatar initials="SK" color="avatar-navy" size="small" /><input value={text} onChange={event => setText(event.target.value)} placeholder="Add a supportive comment..." aria-label="Comment text" /><button aria-label="Send comment" disabled={busy || !text.trim()}><Send size={16} /></button></form>;
+}
+
+function PostCard({ post, index }: { post: FeedPost; index: number }) {
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
   const [commentOpen, setCommentOpen] = useState(false);
+  const [actionError, setActionError] = useState("");
+  const [busy, setBusy] = useState(false);
   return <article className="panel post-card">
     <div className="post-header"><Avatar initials={post.initials} color={post.color} /><div className="post-author"><div className="author-name">{post.name} {index === 0 && <span className="verified"><Check size={10} /></span>}</div><div className="muted small-text">{post.role}</div><div className="muted post-time">{post.time} ago · <span className="globe-dot">●</span> Public</div></div><button className="icon-button post-more" aria-label="More post options"><Ellipsis size={20} /></button></div>
     {post.badge && <div className="spotlight-badge"><Flame size={13} /> {post.badge}</div>}
     <p className="post-copy">{post.text}</p>
     {post.image === "cricket" && <div className="post-media"><div className="media-overlay"><span className="media-label"><Zap size={13} /> TRAINING DIARY</span><div className="media-title">Built through<br />the work.</div><div className="media-subtitle">CONSISTENCY · DISCIPLINE · PROGRESS</div></div><div className="media-ball">SC<span>+</span></div><button className="media-play" aria-label="Play highlight"><Play size={23} fill="currentColor" /></button><div className="media-bottom"><span>01:24</span><span>HIGHLIGHT REEL</span></div></div>}
     <div className="post-stats"><span><span className="reaction-bubbles">♥</span> {post.likes + (liked ? 1 : 0)} reactions</span><button onClick={() => setCommentOpen(!commentOpen)}>{post.comments} comments</button></div>
-    {commentOpen && <div className="comment-preview"><Avatar initials="SK" color="avatar-navy" size="small" /><input placeholder="Add a supportive comment..." /><button aria-label="Send comment"><Send size={16} /></button></div>}
-    <div className="post-actions"><button className={liked ? "selected-action" : ""} onClick={() => setLiked(!liked)}><Heart size={18} fill={liked ? "currentColor" : "none"} /> {liked ? "Liked" : "Appreciate"}</button><button onClick={() => setCommentOpen(!commentOpen)}><MessageCircle size={18} /> Comment</button><button onClick={() => setSaved(!saved)} className={saved ? "selected-action" : ""}><Bookmark size={17} fill={saved ? "currentColor" : "none"} /> {saved ? "Saved" : "Save"}</button></div>
+    {commentOpen && <CommentComposer postId={post.id} onError={setActionError} />} {actionError && <p className="muted small-text" role="status">{actionError}</p>}
+    <div className="post-actions"><button className={liked ? "selected-action" : ""} onClick={async () => { if (!post.id) { setLiked(!liked); return; } setBusy(true); setActionError(""); try { await api(`/api/posts/${post.id}/reactions`, { method: liked ? "DELETE" : "POST", ...(liked ? {} : { json: { reactionType: "appreciate" } }) }); setLiked(!liked); } catch (error) { setActionError(errorMessage(error)); } finally { setBusy(false); } }} disabled={busy}><Heart size={18} fill={liked ? "currentColor" : "none"} /> {liked ? "Liked" : "Appreciate"}</button><button onClick={() => setCommentOpen(!commentOpen)}><MessageCircle size={18} /> Comment</button><button onClick={() => setSaved(!saved)} className={saved ? "selected-action" : ""}><Bookmark size={17} fill={saved ? "currentColor" : "none"} /> {saved ? "Saved" : "Save"}</button></div>
   </article>;
 }
 
@@ -137,15 +155,40 @@ function RightRail({ onNavigate, onFollow, followed }: { onNavigate: (label: str
 
 function DiscoverView({ query, onNavigate }: { query: string; onNavigate: (label: string) => void }) {
   const [sport, setSport] = useState("All sports");
-  const filtered = athletes.filter(a => (sport === "All sports" || a.sport === sport) && (a.name + a.role + a.location).toLowerCase().includes(query.toLowerCase()));
-  return <section className="page-view"><div className="page-title-row"><div><span className="eyebrow">BUILD YOUR NETWORK</span><h1>Discover talent</h1><p>Meet athletes, coaches and teams that move you forward.</p></div><button className="button button-primary" onClick={() => onNavigate("My profile")}><UserRound size={16} /> My profile</button></div><div className="filter-row"><div className="filter-search"><Search size={17} /><input placeholder="Search by name, sport or location" value={query} readOnly /></div><select value={sport} onChange={e => setSport(e.target.value)} aria-label="Filter sport"><option>All sports</option><option>Cricket</option><option>Football</option><option>Athletics</option></select><button className="button button-outline"><SlidersHorizontal size={16} /> Filters</button></div><div className="discover-grid">{filtered.map((person, i) => <article className="panel talent-card" key={person.name}><div className={`talent-cover cover-${i}`}><span>{person.sport.toUpperCase()}</span><div className="cover-orbit" /></div><Avatar initials={person.initials} color={person.color} size="large" /><div className="talent-info"><h3>{person.name} {person.verified && <span className="verified"><Check size={10} /></span>}</h3><p>{person.role}</p><small><MapPin size={12} /> {person.location}</small><button className="button button-outline full-button" onClick={() => onNavigate("Athlete profile")}>View profile</button></div></article>)}</div>{filtered.length === 0 && <div className="empty-state">No profiles match that search yet.</div>}</section>;
+  const [profiles, setProfiles] = useState<Profile[]>(athletes);
+  const [loadError, setLoadError] = useState("");
+  useEffect(() => {
+    let active = true;
+    const params = new URLSearchParams({ limit: "50" });
+    if (query.trim()) params.set("q", query.trim());
+    if (sport !== "All sports") params.set("sport", sport);
+    api<{ profiles: Array<{ full_name: string | null; username: string; role: string; primary_sport: string | null; location: string | null; is_verified: boolean }> }>(`/api/users?${params}`)
+      .then(result => { if (active && result.profiles.length) setProfiles(result.profiles.map((p, i) => { const name = p.full_name || p.username; const parts = name.split(/\\s+/); return { name, role: `${p.primary_sport || "Sport"} · ${p.role}`, sport: p.primary_sport || "Other", location: p.location || "Location not set", initials: parts.slice(0, 2).map(v => v[0]).join("").toUpperCase(), color: ["avatar-blue", "avatar-pink", "avatar-orange", "avatar-green"][i % 4], verified: p.is_verified }; })); })
+      .catch(error => { if (active) setLoadError(errorMessage(error)); });
+    return () => { active = false; };
+  }, [query, sport]);
+  const filtered = profiles.filter(a => (sport === "All sports" || a.sport.toLowerCase() === sport.toLowerCase()) && (a.name + a.role + a.location).toLowerCase().includes(query.toLowerCase()));
+  return <section className="page-view"><div className="page-title-row"><div><span className="eyebrow">BUILD YOUR NETWORK</span><h1>Discover talent</h1><p>Meet athletes, coaches and teams that move you forward.</p></div><button className="button button-primary" onClick={() => onNavigate("My profile")}><UserRound size={16} /> My profile</button></div><div className="filter-row"><div className="filter-search"><Search size={17} /><input placeholder="Search by name, sport or location" value={query} readOnly /></div><select value={sport} onChange={e => setSport(e.target.value)} aria-label="Filter sport"><option>All sports</option><option>Cricket</option><option>Football</option><option>Athletics</option></select><button className="button button-outline"><SlidersHorizontal size={16} /> Filters</button></div>{loadError && <p className="muted small-text" role="status">{loadError} Showing available suggestions.</p>}<div className="discover-grid">{filtered.map((person, i) => <article className="panel talent-card" key={person.name}><div className={`talent-cover cover-${i}`}><span>{person.sport.toUpperCase()}</span><div className="cover-orbit" /></div><Avatar initials={person.initials} color={person.color} size="large" /><div className="talent-info"><h3>{person.name} {person.verified && <span className="verified"><Check size={10} /></span>}</h3><p>{person.role}</p><small><MapPin size={12} /> {person.location}</small><button className="button button-outline full-button" onClick={() => onNavigate("Athlete profile")}>View profile</button></div></article>)}</div>{filtered.length === 0 && <div className="empty-state">No profiles match that search yet.</div>}</section>;
 }
 
 function OpportunitiesView({ query }: { query: string }) {
   const [type, setType] = useState("All opportunities");
   const [applied, setApplied] = useState<string[]>([]);
-  const filtered = opportunities.filter(o => (type === "All opportunities" || o.type === type) && (o.title + o.org + o.location + o.tag).toLowerCase().includes(query.toLowerCase()));
-  return <section className="page-view"><div className="page-title-row"><div><span className="eyebrow">YOUR NEXT CHAPTER</span><h1>Sports opportunities</h1><p>Find trials, scholarships and programs built for your potential.</p></div><button className="button button-primary"><Plus size={17} /> Post an opportunity</button></div><div className="opportunity-hero"><div><span className="hero-kicker"><Sparkles size={14} /> YOUR POTENTIAL, IN MOTION</span><h2>The next big thing<br />could start <em>here.</em></h2><p>Discover your next trial, team, or training opportunity.</p></div><div className="hero-symbol"><Trophy size={66} strokeWidth={1.15} /><span>SC+</span></div></div><div className="filter-row"><div className="filter-search"><Search size={17} /><input value={query} readOnly placeholder="Search opportunities" /></div><select value={type} onChange={e => setType(e.target.value)} aria-label="Filter opportunity type"><option>All opportunities</option><option>Open trials</option><option>Talent scouting</option><option>Scholarship</option></select><button className="button button-outline"><Filter size={16} /> More filters</button></div><div className="opportunity-list">{filtered.map((item, i) => <article className="panel opportunity-card" key={item.title}><div className={`opportunity-large-icon opportunity-icon-${i % 3}`}>{i === 0 ? <Trophy size={23} /> : i === 1 ? <Activity size={23} /> : <Sparkles size={23} />}</div><div className="opportunity-main"><div className="opportunity-tag">{item.tag}</div><h3>{item.title}</h3><p>{item.org}</p><div className="opportunity-meta"><span><MapPin size={14} /> {item.location}</span><span><BriefcaseBusiness size={14} /> {item.type}</span></div></div><div className="opportunity-apply"><small>{item.deadline}</small><button className={`button ${applied.includes(item.title) ? "button-outline" : "button-primary"}`} onClick={() => setApplied(old => old.includes(item.title) ? old : [...old, item.title])}>{applied.includes(item.title) ? <><Check size={15} /> Applied</> : "View & apply"}</button></div></article>)}</div>{filtered.length === 0 && <div className="empty-state">No opportunities found. Try another search.</div>}</section>;
+  const [items, setItems] = useState<Opportunity[]>(opportunities);
+  const [loadError, setLoadError] = useState("");
+  useEffect(() => {
+    let active = true;
+    const params = new URLSearchParams({ limit: "50" });
+    if (query.trim()) params.set("q", query.trim());
+    const typeMap: Record<string, string> = { "Open trials": "trial", "Talent scouting": "scouting", Scholarship: "scholarship" };
+    if (typeMap[type]) params.set("type", typeMap[type]);
+    api<{ opportunities: Array<{ id: string; title: string; organization: string; type: string; location: string | null; deadline: string | null; sport: string }> }>(`/api/opportunities?${params}`)
+      .then(result => { if (active && result.opportunities.length) setItems(result.opportunities.map(item => ({ id: item.id, title: item.title, org: item.organization, type: ({ trial: "Open trials", scouting: "Talent scouting", scholarship: "Scholarship", camp: "Training camp", training_program: "Training program", competition: "Competition", other: "Other" } as Record<string, string>)[item.type] || item.type, location: item.location || "Location not set", deadline: item.deadline ? `Deadline: ${item.deadline}` : "Applications open", tag: item.sport.toUpperCase() }))); })
+      .catch(error => { if (active) setLoadError(errorMessage(error)); });
+    return () => { active = false; };
+  }, [query, type]);
+  const filtered = items.filter(o => (type === "All opportunities" || o.type === type) && (o.title + o.org + o.location + o.tag).toLowerCase().includes(query.toLowerCase()));
+  return <section className="page-view"><div className="page-title-row"><div><span className="eyebrow">YOUR NEXT CHAPTER</span><h1>Sports opportunities</h1><p>Find trials, scholarships and programs built for your potential.</p></div><button className="button button-primary"><Plus size={17} /> Post an opportunity</button></div><div className="opportunity-hero"><div><span className="hero-kicker"><Sparkles size={14} /> YOUR POTENTIAL, IN MOTION</span><h2>The next big thing<br />could start <em>here.</em></h2><p>Discover your next trial, team, or training opportunity.</p></div><div className="hero-symbol"><Trophy size={66} strokeWidth={1.15} /><span>SC+</span></div></div><div className="filter-row"><div className="filter-search"><Search size={17} /><input value={query} readOnly placeholder="Search opportunities" /></div><select value={type} onChange={e => setType(e.target.value)} aria-label="Filter opportunity type"><option>All opportunities</option><option>Open trials</option><option>Talent scouting</option><option>Scholarship</option></select><button className="button button-outline"><Filter size={16} /> More filters</button></div>{loadError && <p className="muted small-text" role="status">{loadError} Showing available suggestions.</p>}<div className="opportunity-list">{filtered.map((item, i) => <article className="panel opportunity-card" key={item.title}><div className={`opportunity-large-icon opportunity-icon-${i % 3}`}>{i === 0 ? <Trophy size={23} /> : i === 1 ? <Activity size={23} /> : <Sparkles size={23} />}</div><div className="opportunity-main"><div className="opportunity-tag">{item.tag}</div><h3>{item.title}</h3><p>{item.org}</p><div className="opportunity-meta"><span><MapPin size={14} /> {item.location}</span><span><BriefcaseBusiness size={14} /> {item.type}</span></div></div><div className="opportunity-apply"><small>{item.deadline}</small><button className={`button ${applied.includes(item.title) ? "button-outline" : "button-primary"}`} onClick={() => setApplied(old => old.includes(item.title) ? old : [...old, item.title])}>{applied.includes(item.title) ? <><Check size={15} /> Applied</> : "View & apply"}</button></div></article>)}</div>{filtered.length === 0 && <div className="empty-state">No opportunities found. Try another search.</div>}</section>;
 }
 
 function MessagesView() {
@@ -182,7 +225,26 @@ export default function SportsConnectShell({ initialScreen = "Home" }: { initial
   const [active, setActive] = useState(initialScreen);
   const [query, setQuery] = useState("");
   const [followed, setFollowed] = useState<string[]>([]);
-  const [posts, setPosts] = useState(feedPosts);
+  const [posts, setPosts] = useState<FeedPost[]>(feedPosts);
+  const [feedError, setFeedError] = useState("");
+  const [feedLoading, setFeedLoading] = useState(true);
+  useEffect(() => {
+    let active = true;
+    api<{ posts: Array<{ id: string; content: string; created_at: string; author: { full_name: string | null; username: string; primary_sport: string | null; is_verified: boolean } | null; media?: Array<{ url: string | null }> }> }>("/api/posts?limit=20")
+      .then(result => {
+        if (!active) return;
+        if (result.posts.length) setPosts(result.posts.map((post, i) => {
+          const name = post.author?.full_name || post.author?.username || "SportsConnect athlete";
+          const initials = name.split(/\\s+/).slice(0, 2).map(part => part[0]).join("").toUpperCase();
+          const elapsed = Math.max(0, Date.now() - new Date(post.created_at).getTime());
+          const time = elapsed < 3600000 ? `${Math.max(1, Math.floor(elapsed / 60000))}m` : elapsed < 86400000 ? `${Math.floor(elapsed / 3600000)}h` : `${Math.floor(elapsed / 86400000)}d`;
+          return { id: post.id, name, initials, color: ["avatar-green", "avatar-purple", "avatar-blue", "avatar-pink"][i % 4], role: post.author?.primary_sport || "SportsConnect athlete", time, text: post.content, image: "", likes: 0, comments: 0, badge: post.author?.is_verified ? "VERIFIED ATHLETE" : "" };
+        }));
+      })
+      .catch(error => { if (active) setFeedError(errorMessage(error)); })
+      .finally(() => { if (active) setFeedLoading(false); });
+    return () => { active = false; };
+  }, []);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [feedTab, setFeedTab] = useState("For you");
 
@@ -209,7 +271,7 @@ export default function SportsConnectShell({ initialScreen = "Home" }: { initial
     <Sidebar active={active} onNavigate={navigate} mobileNavOpen={mobileNavOpen} />
     <div className="app-main"><Topbar onMenu={() => setMobileNavOpen(!mobileNavOpen)} menuOpen={mobileNavOpen} query={query} setQuery={setQuery} onNavigate={navigate} />
       <main id="main-content" className="content-wrap" tabIndex={-1}>
-        {active === "Home" ? <div className="dashboard-grid"><section className="feed-column"><div className="welcome-row"><div><div className="eyebrow"><span className="live-dot" /> YOUR SPORTS COMMUNITY</div><h1>Good morning, Sai <span className="wave">✦</span></h1><p>Your next breakthrough starts with showing up.</p></div><div className="streak-pill"><Flame size={16} /><span><strong>7 day streak</strong><small>Keep it going!</small></span></div></div><section className="welcome-banner"><div className="banner-content"><span className="banner-kicker"><Zap size={13} /> YOUR POTENTIAL IS YOUR POWER</span><h2>Every great athlete<br />starts <em>somewhere.</em></h2><p>Show your progress. Find your people.<br />Make your next move.</p><button className="banner-button" onClick={() => navigate("My profile")}>Build your athlete profile <span>→</span></button></div><div className="banner-art"><div className="banner-ring ring-one" /><div className="banner-ring ring-two" /><div className="banner-orb"><Trophy size={53} strokeWidth={1.25} /></div><span className="art-label art-label-one">TRAIN. GROW. REPEAT.</span><span className="art-label art-label-two">SC / 001</span><div className="art-stats"><span>YOUR NEXT<br /><b>LEVEL</b></span><span className="art-stat-arrow">↗</span></div></div><div className="banner-index">01 <span>/ 03</span></div></section><div className="section-heading feed-heading"><div><h2>Your feed</h2><p>Inspiration from your sports community</p></div><button className="button button-outline button-small" onClick={() => navigate("Discover")}><Compass size={15} /> Explore</button></div><div className="feed-tabs">{["For you", "Following", "Trending"].map(tab => <button key={tab} onClick={() => setFeedTab(tab)} className={feedTab === tab ? "feed-tab-active" : ""}>{tab}{tab === "Trending" && <Flame size={13} />}</button>)}</div><CreatePost onPost={text => setPosts(old => [{ name: "Sai Kiran", initials: "SK", color: "avatar-navy", role: "Athlete · Your update", time: "Just now", text, image: "", likes: 0, comments: 0, badge: "" }, ...old])} />{posts.map((post, i) => <PostCard key={post.name + post.time + i} post={post} index={i} />)}<button className="load-more" onClick={() => setPosts(old => [...old, ...feedPosts])}>Show more updates <ChevronDown size={16} /></button></section><RightRail onNavigate={navigate} onFollow={toggleFollow} followed={followed} /></div> : active === "Discover" ? <DiscoverView query={query} onNavigate={navigate} /> : active === "Opportunities" ? <OpportunitiesView query={query} /> : active === "Messages" ? <MessagesView /> : active === "My profile" || active === "Athlete profile" ? <ProfileView /> : <SimpleView title={pageTitle} />}
+        {active === "Home" ? <div className="dashboard-grid"><section className="feed-column"><div className="welcome-row"><div><div className="eyebrow"><span className="live-dot" /> YOUR SPORTS COMMUNITY</div><h1>Good morning, Sai <span className="wave">✦</span></h1><p>Your next breakthrough starts with showing up.</p></div><div className="streak-pill"><Flame size={16} /><span><strong>7 day streak</strong><small>Keep it going!</small></span></div></div><section className="welcome-banner"><div className="banner-content"><span className="banner-kicker"><Zap size={13} /> YOUR POTENTIAL IS YOUR POWER</span><h2>Every great athlete<br />starts <em>somewhere.</em></h2><p>Show your progress. Find your people.<br />Make your next move.</p><button className="banner-button" onClick={() => navigate("My profile")}>Build your athlete profile <span>→</span></button></div><div className="banner-art"><div className="banner-ring ring-one" /><div className="banner-ring ring-two" /><div className="banner-orb"><Trophy size={53} strokeWidth={1.25} /></div><span className="art-label art-label-one">TRAIN. GROW. REPEAT.</span><span className="art-label art-label-two">SC / 001</span><div className="art-stats"><span>YOUR NEXT<br /><b>LEVEL</b></span><span className="art-stat-arrow">↗</span></div></div><div className="banner-index">01 <span>/ 03</span></div></section><div className="section-heading feed-heading"><div><h2>Your feed</h2><p>Inspiration from your sports community</p></div><button className="button button-outline button-small" onClick={() => navigate("Discover")}><Compass size={15} /> Explore</button></div><div className="feed-tabs">{["For you", "Following", "Trending"].map(tab => <button key={tab} onClick={() => setFeedTab(tab)} className={feedTab === tab ? "feed-tab-active" : ""}>{tab}{tab === "Trending" && <Flame size={13} />}</button>)}</div><CreatePost onPost={async text => { try { const result = await api<{ post: { id: string; content: string } }>("/api/posts", { method: "POST", json: { content: text, visibility: "public" } }); setPosts(old => [{ id: result.post.id, name: "Sai Kiran", initials: "SK", color: "avatar-navy", role: "Athlete · Your update", time: "Just now", text: result.post.content, image: "", likes: 0, comments: 0, badge: "" }, ...old]); setFeedError(""); } catch (error) { setFeedError(errorMessage(error)); } }} />{feedLoading && <p className="muted small-text" role="status">Loading your community feed…</p>}{feedError && <p className="muted small-text" role="status">{feedError}</p>}{posts.map((post, i) => <PostCard key={post.name + post.time + i} post={post} index={i} />)}<button className="load-more" onClick={() => setPosts(old => [...old, ...feedPosts])}>Show more updates <ChevronDown size={16} /></button></section><RightRail onNavigate={navigate} onFollow={toggleFollow} followed={followed} /></div> : active === "Discover" ? <DiscoverView query={query} onNavigate={navigate} /> : active === "Opportunities" ? <OpportunitiesView query={query} /> : active === "Messages" ? <MessagesView /> : active === "My profile" || active === "Athlete profile" ? <ProfileView /> : <SimpleView title={pageTitle} />}
       </main>
       <nav className="mobile-bottom-nav" aria-label="Mobile navigation">{[{ label: "Home", icon: Home }, { label: "Discover", icon: Compass }, { label: "Opportunities", icon: BriefcaseBusiness }, { label: "Messages", icon: MessageCircle }, { label: "My profile", icon: UserRound }].map(({ label, icon: Icon }) => <button key={label} className={active === label ? "mobile-active" : ""} aria-current={active === label ? "page" : undefined} onClick={() => navigate(label)}><Icon size={20} /><span>{label === "Opportunities" ? "Explore" : label === "My profile" ? "Profile" : label}</span></button>)}</nav>
     </div>
