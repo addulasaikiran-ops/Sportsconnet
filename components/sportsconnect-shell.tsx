@@ -203,7 +203,8 @@ export default function SportsConnectShell({ initialScreen = "Home" }: { initial
   };
   const toggleFollow = (name: string) => setFollowed(old => old.includes(name) ? old.filter(n => n !== name) : [...old, name]);
 
-  return <div className="app-shell">\n    <a className="skip-link" href="#main-content">Skip to main content</a>
+  return <div className="app-shell">
+    <a className="skip-link" href="#main-content">Skip to main content</a>
     {mobileNavOpen && <button className="mobile-scrim" aria-label="Close navigation" onClick={() => setMobileNavOpen(false)} />}
     <Sidebar active={active} onNavigate={navigate} mobileNavOpen={mobileNavOpen} />
     <div className="app-main"><Topbar onMenu={() => setMobileNavOpen(!mobileNavOpen)} menuOpen={mobileNavOpen} query={query} setQuery={setQuery} onNavigate={navigate} />
