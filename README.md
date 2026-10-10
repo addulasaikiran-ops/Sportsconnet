@@ -50,8 +50,10 @@ The schema is versioned in these migrations:
 
 - `supabase/migrations/20261010030035_initial_sportsconnect_schema.sql`
 - `supabase/migrations/20261010030207_harden_sportsconnect_schema.sql`
+- `supabase/migrations/20261010030703_storage_buckets_and_policies.sql`
+- `supabase/migrations/20261010030731_storage_post_media_read_access.sql`
 
-Both migration versions are recorded on the dedicated remote SportsConnect project. To keep local schema changes in sync later, link the project and run:
+All four migration versions are recorded on the dedicated remote SportsConnect project. To keep local schema changes in sync later, link the project and run:
 
 ```bash
 npx supabase login
@@ -60,7 +62,7 @@ npx supabase db pull
 npx supabase migration list
 ```
 
-The initial schema creates profiles, posts/media, follows, reactions, comments, opportunities/applications, conversations/members/messages and notifications, with indexes, profile creation/notification triggers and RLS policies. The hardening migration restricts helper/trigger function execution, moves the conversation membership helper to a non-exposed `private` schema, and adds supporting indexes.
+The initial schema creates profiles, posts/media, follows, reactions, comments, opportunities/applications, conversations/members/messages and notifications, with indexes, profile creation/notification triggers and RLS policies. The hardening migration restricts helper/trigger function execution, moves the conversation membership helper to a non-exposed `private` schema, and adds supporting indexes. Storage migrations create a public `avatars` bucket and a private `post-media` bucket, enforce per-user upload paths, and limit private media access to users who can read the related post.
 
 ## API reference
 
@@ -85,6 +87,7 @@ All API routes are implemented with Next.js App Router Route Handlers. Authentic
 | GET, POST | `/api/conversations` | List or start a direct conversation | Yes |
 | GET, POST | `/api/conversations/:conversationId/messages` | List/send private messages | Yes |
 | GET, PATCH | `/api/notifications` | List notifications and mark them read | Yes |
+| POST | `/api/storage/upload` | Upload an avatar or attach image/video media to a post using multipart form data | Yes |
 
 Pagination endpoints accept `limit` and `page` query parameters. The maximum page size is capped server-side. Search and mutation payloads are validated with Zod. The database uses RLS to limit updates to the current user and restrict messages to conversation members.
 
@@ -165,5 +168,5 @@ A GitHub Actions workflow also runs lint and a production build on pushes to `ma
 
 - Login and signup call the new Supabase Auth API endpoints. Email confirmation depends on your Supabase Auth settings.
 - Feed, discover, messages and opportunities screens still use mock data until the UI is wired to the new endpoints.
-- File/media upload and signed URL handling are not included yet.
+- Authenticated uploads are available at `POST /api/storage/upload`: send multipart form data with `kind=avatar` and `file`, or `kind=post-media`, `postId`, and `file`. Avatar images are limited to 5 MB; post images/videos are limited to 100 MB. Post-media URLs are signed for one hour by the feed API and should be refreshed when they expire.
 - Before production, add rate limiting/abuse protection, password recovery, moderation/report flows, storage upload rules, test coverage and monitoring.
