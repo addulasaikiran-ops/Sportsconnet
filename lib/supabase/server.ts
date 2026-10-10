@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import { ApiError } from "@/lib/api/http";
+import { ApiError } from "@/lib/api/error";
 
 export async function createSupabaseServerClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
