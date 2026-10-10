@@ -22,9 +22,25 @@ Open http://localhost:3000.
 ```text
 Sportsconnet/
 ├── app/
-│   ├── layout.tsx          # App metadata and root document
-│   ├── page.tsx            # Dashboard and main screen interactions
-│   └── globals.css         # Responsive white/navy/lime design system
+│   ├── page.tsx
+│   ├── layout.tsx
+│   ├── globals.css
+│   ├── discover/page.tsx
+│   ├── opportunities/page.tsx
+│   ├── messages/page.tsx
+│   ├── saved/page.tsx
+│   ├── notifications/page.tsx
+│   ├── profile/page.tsx
+│   ├── athletes/page.tsx
+│   ├── athletes/[username]/page.tsx
+│   ├── coaches-clubs/page.tsx
+│   ├── leaderboard/page.tsx
+│   ├── help/page.tsx
+│   ├── login/page.tsx
+│   └── signup/page.tsx
+├── components/
+│   ├── sportsconnect-shell.tsx
+│   └── auth-form.tsx
 ├── .gitignore
 ├── eslint.config.mjs
 ├── next.config.ts
