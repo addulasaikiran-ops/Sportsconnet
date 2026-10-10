@@ -419,17 +419,6 @@ with check (
   applicant_id = auth.uid()
   and exists (select 1 from public.opportunities o where o.id = opportunity_id and o.status = 'published')
 );
-drop policy if exists "Update application as applicant or opportunity owner" on public.opportunity_applications;
-create policy "Update application as applicant or opportunity owner" on public.opportunity_applications for update to authenticated
-using (
-  applicant_id = auth.uid()
-  or exists (select 1 from public.opportunities o where o.id = opportunity_id and o.created_by = auth.uid())
-)
-with check (
-  applicant_id = auth.uid()
-  or exists (select 1 from public.opportunities o where o.id = opportunity_id and o.created_by = auth.uid())
-);
-
 drop policy if exists "Members read their conversations" on public.conversations;
 create policy "Members read their conversations" on public.conversations for select to authenticated
 using (public.is_conversation_member(id));
@@ -453,13 +442,14 @@ using (recipient_id = auth.uid()) with check (recipient_id = auth.uid());
 grant usage on schema public to anon, authenticated;
 grant select on public.profiles, public.posts, public.post_media, public.comments, public.opportunities to anon, authenticated;
 grant insert, update, delete on public.posts, public.post_media, public.comments to authenticated;
-grant update on public.profiles to authenticated;
+grant update (username, full_name, bio, location, primary_sport, avatar_url) on public.profiles to authenticated;
 grant select, insert, delete on public.follows to authenticated;
 grant select, insert, update, delete on public.post_reactions to authenticated;
 grant insert, update, delete on public.opportunities to authenticated;
-grant select, insert, update on public.opportunity_applications to authenticated;
+grant select on public.opportunity_applications to authenticated;
+grant insert (opportunity_id, applicant_id, cover_note) on public.opportunity_applications to authenticated;
 grant select on public.conversations, public.conversation_members, public.messages, public.notifications to authenticated;
 grant insert on public.messages to authenticated;
-grant update on public.notifications to authenticated;
+grant update (read_at) on public.notifications to authenticated;
 
 -- Profiles are created by the auth.users trigger; users should not insert rows directly.
