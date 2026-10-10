@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { Activity, ArrowLeft, ArrowRight, Check, ShieldCheck, Sparkles, Trophy } from "lucide-react";
 
@@ -8,11 +9,58 @@ type AuthFormProps = { mode: "login" | "signup" };
 
 export default function AuthForm({ mode }: AuthFormProps) {
   const isSignup = mode === "signup";
+  const router = useRouter();
   const [notice, setNotice] = useState("");
+  const [noticeIsError, setNoticeIsError] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setNotice("Demo mode: authentication will be connected to Supabase in the next phase.");
+    setNotice("");
+    setNoticeIsError(false);
+    setIsSubmitting(true);
+
+    const form = new FormData(event.currentTarget);
+    const email = String(form.get("email") ?? "").trim();
+    const password = String(form.get("password") ?? "");
+    const endpoint = isSignup ? "/api/auth/signup" : "/api/auth/login";
+    const payload = isSignup
+      ? {
+          email,
+          password,
+          fullName: [form.get("firstName"), form.get("lastName")]
+            .map((value) => String(value ?? "").trim())
+            .filter(Boolean)
+            .join(" "),
+          role: String(form.get("role") ?? "athlete")
+        }
+      : { email, password };
+
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(typeof result.error === "string" ? result.error : "Authentication failed. Please try again.");
+      }
+
+      if (isSignup && result.emailConfirmationRequired) {
+        setNotice("Your account was created. Check your email to confirm it, then sign in.");
+        return;
+      }
+
+      router.replace("/");
+      router.refresh();
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Something went wrong. Please try again.");
+      setNoticeIsError(true);
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -47,10 +95,10 @@ export default function AuthForm({ mode }: AuthFormProps) {
             <label>Email address<input type="email" name="email" autoComplete="email" placeholder="you@example.com" required /></label>
             <label>Password<input type="password" name="password" autoComplete={isSignup ? "new-password" : "current-password"} minLength={8} placeholder={isSignup ? "At least 8 characters" : "Enter your password"} required /></label>
             {isSignup && <label>I’m joining as<select name="role" defaultValue="athlete"><option value="athlete">Athlete / Player</option><option value="coach">Coach</option><option value="club">Club / Academy</option><option value="association">Sports association</option></select></label>}
-            {!isSignup && <div className="auth-options"><label className="auth-remember"><input type="checkbox" name="remember" /> Remember me</label><button type="button" className="auth-inline-link" onClick={() => setNotice("Password reset will be enabled when authentication is connected.")}>Forgot password?</button></div>}
-            <button className="button button-primary auth-submit" type="submit">{isSignup ? "Create account" : "Sign in"} <ArrowRight size={16} /></button>
+            {!isSignup && <div className="auth-options"><label className="auth-remember"><input type="checkbox" name="remember" /> Remember me</label><button type="button" className="auth-inline-link" onClick={() => { setNotice("Password recovery will be added in the next auth step. Contact support if you are locked out."); setNoticeIsError(false); }}>Forgot password?</button></div>}
+            <button className="button button-primary auth-submit" type="submit" disabled={isSubmitting}>{isSubmitting ? "Please wait…" : isSignup ? "Create account" : "Sign in"} <ArrowRight size={16} /></button>
           </form>
-          {notice && <p className="auth-notice" role="status">{notice}</p>}
+          {notice && <p className={`auth-notice ${noticeIsError ? "auth-notice-error" : ""}`} role={noticeIsError ? "alert" : "status"}>{notice}</p>}
           <p className="auth-switch">{isSignup ? "Already part of the network?" : "New to SportsConnect?"} <Link href={isSignup ? "/login" : "/signup"}>{isSignup ? "Sign in" : "Create an account"}</Link></p>
           <div className="auth-legal">By continuing, you agree to our <a href="#terms">Terms</a> and <a href="#privacy">Privacy Policy</a>.</div>
         </div>
