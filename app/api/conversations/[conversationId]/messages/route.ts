@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { apiErrorResponse, isUuid, parseJson, positiveInt, requireUser } from "@/lib/api/http";
+import { enforceRateLimit } from "@/lib/api/rate-limit";
 
 type RouteContext = { params: Promise<{ conversationId: string }> };
 const messageSchema = z.object({ content: z.string().trim().min(1).max(4000) });
