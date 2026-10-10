@@ -11,6 +11,8 @@ const createPostSchema = z.object({
 
 export async function GET(request: Request) {
   try {
+    const limited = await enforceRateLimit(request, { name: "feed-read", limit: 60, window: "1 m", scope: "ip", key: "" });
+    if (limited) return limited;
     const url = new URL(request.url);
     const limit = positiveInt(url.searchParams.get("limit"), 20, 50);
     const page = Math.max(1, positiveInt(url.searchParams.get("page"), 1, 100000));
@@ -56,6 +58,8 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const { supabase, user } = await requireUser();
+    const limited = await enforceRateLimit(request, { name: "post-create", limit: 10, window: "10 m", scope: "user", key: user.id });
+    if (limited) return limited;
     const body = await parseJson(request, createPostSchema);
 
     const { data, error } = await supabase
