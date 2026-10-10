@@ -1,0 +1,66 @@
+import { NextResponse } from "next/server";
+import type { SupabaseClient, User } from "@supabase/supabase-js";
+import type { ZodType } from "zod";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+
+export class ApiError extends Error {
+  constructor(message: string, public readonly status: number = 500) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
+export function apiErrorResponse(error: unknown) {
+  if (error instanceof ApiError) {
+    return NextResponse.json({ error: error.message }, { status: error.status });
+  }
+
+  console.error("[SportsConnect API]", error);
+  return NextResponse.json(
+    { error: "An unexpected server error occurred." },
+    { status: 500 }
+  );
+}
+
+export async function parseJson<T>(request: Request, schema: ZodType<T>): Promise<T> {
+  let body: unknown;
+
+  try {
+    body = await request.json();
+  } catch {
+    throw new ApiError("Request body must be valid JSON.", 400);
+  }
+
+  const parsed = schema.safeParse(body);
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    throw new ApiError(issue?.message ?? "Invalid request body.", 400);
+  }
+
+  return parsed.data;
+}
+
+export async function requireUser(): Promise<{
+  supabase: SupabaseClient;
+  user: User;
+}> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.auth.getUser();
+
+  if (error || !data.user) {
+    throw new ApiError("Authentication required.", 401);
+  }
+
+  return { supabase, user: data.user };
+}
+
+export function positiveInt(value: string | null, fallback: number, max: number) {
+  if (!value) return fallback;
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed < 1) return fallback;
+  return Math.min(parsed, max);
+}
+
+export function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
