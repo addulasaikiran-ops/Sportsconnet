@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { apiErrorResponse, parseJson, positiveInt, requireUser } from "@/lib/api/http";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { enforceRateLimit } from "@/lib/api/rate-limit";
 
 const createPostSchema = z.object({
   content: z.string().trim().min(1).max(3000),
