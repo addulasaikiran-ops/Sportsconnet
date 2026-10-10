@@ -34,7 +34,7 @@ export async function GET(request: Request) {
     if (type && ["trial", "scholarship", "scouting", "camp", "training_program", "competition", "other"].includes(type)) {
       query = query.eq("type", type);
     }
-    if (search) query = query.or("title.ilike.%"+search.replace(/[,%()]/g, " ")+"%,organization.ilike.%"+search.replace(/[,%()]/g, " ")+"%");
+    if (search) query = query.or("title.ilike.%"+search.replace(/[^a-zA-Z0-9 _-]/g, " ")+"%,organization.ilike.%"+search.replace(/[,%()]/g, " ")+"%");
 
     const { data, error, count } = await query;
     if (error) throw new Error("Could not load opportunities.");
