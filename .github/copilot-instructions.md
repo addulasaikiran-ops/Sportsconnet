@@ -1,8 +1,11 @@
 # SportsConnect instructions for GitHub Copilot
 
-Follow the repository-wide `AGENTS.md` instructions.
+Follow `AGENTS.md` for repository-wide constraints and use relevant project-local Agent Skills in `.github/skills/` when their descriptions match the task.
 
-- Use TypeScript strictness and existing Next.js App Router conventions.
+- For unclear or multi-step work, use `brainstorming` and `superpowers-workflow` before implementation.
+- For behavior changes, use `tdd` and add focused regression coverage where practical.
+- For TypeScript, React, Next.js App Router, or Supabase work, apply `typescript-engineering`.
+- For UI work, apply `ui-ux-pro-max`; before shipping, apply `web-quality` to the relevant risks.
 - Prefer existing Supabase server/client helpers and Zod validation rather than creating parallel abstractions.
 - Preserve Row Level Security and verify ownership/membership checks for every user-specific resource.
 - Keep authenticated API responses private and non-cacheable unless the endpoint is intentionally public and contains only public fields.
