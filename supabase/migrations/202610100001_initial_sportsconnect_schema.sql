@@ -526,6 +526,23 @@ drop policy if exists "Mark own notifications read" on public.notifications;
 create policy "Mark own notifications read" on public.notifications for update to authenticated
 using (recipient_id = auth.uid()) with check (recipient_id = auth.uid());
 
+-- Clear inherited/default API grants for these tables, then grant only the
+-- operations needed below. RLS remains enabled as the row-level guardrail.
+revoke all privileges on table
+  public.profiles,
+  public.posts,
+  public.post_media,
+  public.follows,
+  public.post_reactions,
+  public.comments,
+  public.opportunities,
+  public.opportunity_applications,
+  public.conversations,
+  public.conversation_members,
+  public.messages,
+  public.notifications
+from anon, authenticated;
+
 grant usage on schema public to anon, authenticated;
 grant select on public.profiles, public.posts, public.post_media, public.comments, public.opportunities to anon, authenticated;
 grant insert, update, delete on public.posts, public.post_media, public.comments to authenticated;
@@ -536,7 +553,7 @@ grant insert, update, delete on public.opportunities to authenticated;
 grant select on public.opportunity_applications to authenticated;
 grant insert (opportunity_id, applicant_id, cover_note) on public.opportunity_applications to authenticated;
 grant select on public.conversations, public.conversation_members, public.messages, public.notifications to authenticated;
-grant insert on public.messages to authenticated;
+grant insert (conversation_id, sender_id, content) on public.messages to authenticated;
 grant update (read_at) on public.notifications to authenticated;
 
 -- Profiles are created by the auth.users trigger; users should not insert rows directly.
