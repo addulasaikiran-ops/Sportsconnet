@@ -7,7 +7,8 @@ type RateLimitPolicy = {
   name: string;
   limit: number;
   window: "15 m" | "1 h" | "1 m" | "10 m";
-  scope: "ip" | "user";\n  key: string;
+  scope: "ip" | "user";
+  key: string;
 };
 
 const limiters = new Map<string, Ratelimit>();
@@ -55,9 +56,9 @@ export async function enforceRateLimit(
   const clientIp = request.headers.get("x-real-ip")?.trim()
     || forwarded?.split(",").at(-1)?.trim()
     || "unknown";
-  const identifier = policy.identifier === "ip"
+  const identifier = policy.scope === "ip"
     ? `ip:${digest(clientIp)}`
-    : `user:${digest(policy.identifier)}`;
+    : `user:${digest(policy.key)}`;
 
   try {
     const result = await getLimiter(policy).limit(`${policy.name}:${identifier}`);
