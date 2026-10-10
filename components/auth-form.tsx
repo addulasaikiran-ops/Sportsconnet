@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { Activity, ArrowLeft, ArrowRight, Check, ShieldCheck, Sparkles, Trophy } from "lucide-react";
 
 type AuthFormProps = { mode: "login" | "signup" };
@@ -10,7 +10,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
   const isSignup = mode === "signup";
   const [notice, setNotice] = useState("");
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setNotice("Demo mode: authentication will be connected to Supabase in the next phase.");
   }
