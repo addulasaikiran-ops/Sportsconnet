@@ -17,6 +17,22 @@ npm run dev
 
 Open http://localhost:3000.
 
+## File structure
+
+```text
+Sportsconnet/
+├── app/
+│   ├── layout.tsx          # App metadata and root document
+│   ├── page.tsx            # Dashboard and main screen interactions
+│   └── globals.css         # Responsive white/navy/lime design system
+├── .gitignore
+├── eslint.config.mjs
+├── next.config.ts
+├── package.json
+├── postcss.config.mjs
+└── tsconfig.json
+```
+
 ## Main screens in this prototype
 
 - Home feed with local post composer, reactions, save and comment controls
