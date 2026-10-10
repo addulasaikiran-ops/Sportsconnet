@@ -317,13 +317,13 @@ returns trigger
 language plpgsql
 security definer
 set search_path = public
-as $
+as $$
 begin
   insert into public.notifications (recipient_id, actor_id, type, entity_id, body)
   values (new.following_id, new.follower_id, 'follow', new.follower_id, 'Started following you');
   return new;
 end;
-$;
+$$;
 
 drop trigger if exists follows_create_notification on public.follows;
 create trigger follows_create_notification
@@ -335,7 +335,7 @@ returns trigger
 language plpgsql
 security definer
 set search_path = public
-as $
+as $$
 declare
   post_author_id uuid;
 begin
@@ -346,7 +346,7 @@ begin
   end if;
   return new;
 end;
-$;
+$$;
 
 drop trigger if exists reactions_create_notification on public.post_reactions;
 create trigger reactions_create_notification
@@ -358,7 +358,7 @@ returns trigger
 language plpgsql
 security definer
 set search_path = public
-as $
+as $$
 declare
   post_author_id uuid;
 begin
@@ -369,7 +369,7 @@ begin
   end if;
   return new;
 end;
-$;
+$$;
 
 drop trigger if exists comments_create_notification on public.comments;
 create trigger comments_create_notification
@@ -381,7 +381,7 @@ returns trigger
 language plpgsql
 security definer
 set search_path = public
-as $
+as $$
 declare
   opportunity_owner_id uuid;
 begin
@@ -392,7 +392,7 @@ begin
   end if;
   return new;
 end;
-$;
+$$;
 
 drop trigger if exists applications_create_notification on public.opportunity_applications;
 create trigger applications_create_notification
