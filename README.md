@@ -135,13 +135,13 @@ No Sentry project or credentials have been created/configured, and no deployment
 
 ## Monitoring and email alerts
 
-The GitHub Actions workflow at `.github/workflows/monitoring.yml` runs every five minutes (and can be run manually). It requests `/api/health`, alerts when the endpoint is unavailable, returns a non-200 response, or takes longer than two seconds. The health endpoint checks Supabase/PostgREST reachability and reports whether the Upstash rate-limit store is configured/reachable. In production, the endpoint is unhealthy when the rate-limit store is missing or unavailable because API rate limiting fails closed.
+The GitHub Actions workflow at `.github/workflows/monitoring.yml` runs every 15 minutes (and can be run manually). It requests `/api/health`, alerts when the endpoint is unavailable, returns a non-200 response, or takes longer than two seconds. The health endpoint checks Supabase/PostgREST reachability and reports whether the Upstash rate-limit store is configured/reachable. In production, the endpoint is unhealthy when the rate-limit store is missing or unavailable because API rate limiting fails closed.
 
 ### Configure email delivery
 
 In GitHub, open **Settings → Secrets and variables → Actions** for this repository and add these repository secrets:
 
-- `MONITOR_BASE_URL`: the deployed application's origin, e.g. `https://your-domain.example` (no trailing path; monitoring will append `/api/health`).
+- `SPORTSCONNECT_BASE_URL`: the deployed application's origin, e.g. `https://your-domain.example` (no trailing path; monitoring will append `/api/health`).
 - `ALERT_SMTP_SERVER`: SMTP server hostname from your email provider.
 - `ALERT_SMTP_PORT`: SMTP port, usually `465` for implicit TLS or `587` for STARTTLS as supported by the provider.
 - `ALERT_SMTP_USERNAME`: SMTP login.
@@ -153,7 +153,7 @@ Use a dedicated mailbox or transactional email provider and an app password; nev
 
 ### What this checks and what still needs external setup
 
-- **Application availability and latency:** scheduled health checks, 5-minute cadence, 2-second response threshold.
+- **Application availability and latency:** scheduled health checks, 15-minute cadence, 2-second response threshold.
 - **Database:** health endpoint probes Supabase PostgREST without returning table data.
 - **Rate-limit store:** probes Upstash Redis when configured; in production, missing/unreachable Redis makes the health endpoint return 503.
 - **Application exceptions:** Sentry is already integrated, but Sentry needs a project DSN and alert rules.
@@ -162,7 +162,7 @@ Use a dedicated mailbox or transactional email provider and an app password; nev
 
 ### Important limitations
 
-This workflow sends an email for every failed scheduled check, so a prolonged outage can generate repeated messages. Tune or add a cooldown/deduplication mechanism before relying on it for a high-traffic production service. GitHub-hosted scheduled workflows are best-effort and can be delayed; use a dedicated uptime monitor for stricter SLA needs. No external account, email credentials, GitHub secrets, or hosting URL are created by this PR. Monitoring cannot run against the real app until a reachable deployment URL exists. No deployment is performed.
+The workflow uses an Upstash incident key to send one email when an incident starts and one when checks recover, suppressing repeated alerts while the same incident remains open. If monitoring cannot reach Redis, the monitor itself fails and may not be able to deduplicate or send a normal incident email; keep an independent provider-level alert path for critical services. GitHub-hosted scheduled workflows are best-effort and can be delayed; use a dedicated uptime monitor for stricter SLA needs. No external account, email credentials, GitHub secrets, or hosting URL are created by this PR. Monitoring cannot run against the real app until a reachable deployment URL exists. No deployment is performed.
 
 ## Environment variables
 
