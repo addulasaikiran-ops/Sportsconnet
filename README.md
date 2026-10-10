@@ -106,6 +106,18 @@ Initial limits:
 
 IP identifiers are hashed before being used as Redis keys. Tune these limits after observing legitimate traffic and abuse patterns.
 
+## Caching and CDN
+
+The app is configured to use Next.js image optimization and the hosting platform's CDN defaults:
+
+- Next.js fingerprinted assets under `/_next/static/` receive a one-year immutable cache lifetime.
+- API responses default to `private, no-store` so authenticated or user-specific data is not accidentally shared by a CDN.
+- The public profile lookup endpoint (`GET /api/users/:userId`) opts into a 60-second shared cache with stale-while-revalidate up to five minutes. Keep this endpoint limited to public profile fields.
+- Next.js image optimization prefers AVIF and WebP where supported. The configured image cache TTL is a minimum; actual caching also depends on source headers and platform behavior.
+- Feed responses contain short-lived signed URLs for private post media and are deliberately not shared-cacheable. Message, account, and personalized API responses should remain private.
+
+When a profile is edited, a cached public profile may take up to about a minute to refresh under normal conditions. If immediate invalidation becomes necessary, add explicit tag/path revalidation or a purge strategy alongside the profile update endpoint. CDN behavior should be verified after the first deployment; no deployment is performed as part of this change.
+
 ## Environment variables
 
 `.env.example` documents the supported values:

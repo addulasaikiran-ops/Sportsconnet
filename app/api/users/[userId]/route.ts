@@ -17,7 +17,10 @@ export async function GET(_request: Request, context: RouteContext) {
 
     if (error) throw new Error("Could not load profile.");
     if (!data) return NextResponse.json({ error: "Profile not found." }, { status: 404 });
-    return NextResponse.json({ profile: data });
+    return NextResponse.json(
+      { profile: data },
+      { headers: { "Cache-Control": "public, max-age=0, s-maxage=60, stale-while-revalidate=300" } }
+    );
   } catch (error) {
     return apiErrorResponse(error);
   }
