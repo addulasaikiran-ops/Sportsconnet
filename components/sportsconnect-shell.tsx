@@ -71,6 +71,22 @@ function Sidebar({ active, onNavigate, mobileNavOpen }: { active: string; onNavi
 }
 
 function Topbar({ onMenu, menuOpen, query, setQuery, onNavigate }: { onMenu: () => void; menuOpen: boolean; query: string; setQuery: (value: string) => void; onNavigate: (label: string) => void }) {
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleShortcut = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        searchRef.current?.focus();
+      }
+      if (event.key === "Escape" && document.activeElement === searchRef.current) {
+        searchRef.current?.blur();
+      }
+    };
+    window.addEventListener("keydown", handleShortcut);
+    return () => window.removeEventListener("keydown", handleShortcut);
+  }, []);
+
   return <header className="topbar">
     <button className="mobile-menu icon-button" onClick={onMenu} aria-label="Open menu" aria-expanded={menuOpen}><Menu size={21} /></button>
     <div className="top-search"><Search size={18} /><input ref={searchRef} value={query} onChange={e => setQuery(e.target.value)} placeholder="Search athletes, coaches, sports..." aria-label="Search athletes, coaches, and sports" /><kbd aria-hidden="true">⌘ K</kbd></div>
@@ -187,7 +203,7 @@ export default function SportsConnectShell({ initialScreen = "Home" }: { initial
   };
   const toggleFollow = (name: string) => setFollowed(old => old.includes(name) ? old.filter(n => n !== name) : [...old, name]);
 
-  return <div className="app-shell">
+  return <div className="app-shell">\n    <a className="skip-link" href="#main-content">Skip to main content</a>
     {mobileNavOpen && <button className="mobile-scrim" aria-label="Close navigation" onClick={() => setMobileNavOpen(false)} />}
     <Sidebar active={active} onNavigate={navigate} mobileNavOpen={mobileNavOpen} />
     <div className="app-main"><Topbar onMenu={() => setMobileNavOpen(!mobileNavOpen)} menuOpen={mobileNavOpen} query={query} setQuery={setQuery} onNavigate={navigate} />
