@@ -312,6 +312,93 @@ create trigger messages_create_notifications
 after insert on public.messages
 for each row execute function public.notify_on_message();
 
+create or replace function public.notify_on_follow()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $
+begin
+  insert into public.notifications (recipient_id, actor_id, type, entity_id, body)
+  values (new.following_id, new.follower_id, 'follow', new.follower_id, 'Started following you');
+  return new;
+end;
+$;
+
+drop trigger if exists follows_create_notification on public.follows;
+create trigger follows_create_notification
+after insert on public.follows
+for each row execute function public.notify_on_follow();
+
+create or replace function public.notify_on_reaction()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $
+declare
+  post_author_id uuid;
+begin
+  select p.author_id into post_author_id from public.posts p where p.id = new.post_id;
+  if post_author_id is not null and post_author_id <> new.user_id then
+    insert into public.notifications (recipient_id, actor_id, type, entity_id, body)
+    values (post_author_id, new.user_id, 'reaction', new.post_id, 'Reacted to your post');
+  end if;
+  return new;
+end;
+$;
+
+drop trigger if exists reactions_create_notification on public.post_reactions;
+create trigger reactions_create_notification
+after insert on public.post_reactions
+for each row execute function public.notify_on_reaction();
+
+create or replace function public.notify_on_comment()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $
+declare
+  post_author_id uuid;
+begin
+  select p.author_id into post_author_id from public.posts p where p.id = new.post_id;
+  if post_author_id is not null and post_author_id <> new.author_id then
+    insert into public.notifications (recipient_id, actor_id, type, entity_id, body)
+    values (post_author_id, new.author_id, 'comment', new.post_id, left(new.content, 120));
+  end if;
+  return new;
+end;
+$;
+
+drop trigger if exists comments_create_notification on public.comments;
+create trigger comments_create_notification
+after insert on public.comments
+for each row execute function public.notify_on_comment();
+
+create or replace function public.notify_on_application()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $
+declare
+  opportunity_owner_id uuid;
+begin
+  select o.created_by into opportunity_owner_id from public.opportunities o where o.id = new.opportunity_id;
+  if opportunity_owner_id is not null and opportunity_owner_id <> new.applicant_id then
+    insert into public.notifications (recipient_id, actor_id, type, entity_id, body)
+    values (opportunity_owner_id, new.applicant_id, 'application', new.opportunity_id, 'Someone applied to your opportunity');
+  end if;
+  return new;
+end;
+$;
+
+drop trigger if exists applications_create_notification on public.opportunity_applications;
+create trigger applications_create_notification
+after insert on public.opportunity_applications
+for each row execute function public.notify_on_application();
+
 alter table public.profiles enable row level security;
 alter table public.posts enable row level security;
 alter table public.post_media enable row level security;
