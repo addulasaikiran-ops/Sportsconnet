@@ -13,9 +13,9 @@
   },
   "dependencies": {
     "lucide-react": "^0.468.0",
-    "next": "^15.5.18",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
+    "next": "^15.5.27",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.49.1",
     "zod": "^3.24.2"
@@ -26,7 +26,7 @@
     "@types/react": "^19.0.3",
     "@types/react-dom": "^19.0.2",
     "eslint": "^9.17.0",
-    "eslint-config-next": "^15.5.18",
+    "eslint-config-next": "^15.5.27",
     "postcss": "^8.4.49",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.7.2",
