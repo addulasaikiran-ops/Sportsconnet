@@ -38,27 +38,29 @@ The health endpoint at `/api/health` reports whether the expected Supabase envir
 
 ## Supabase project selection
 
-The connected Supabase workspace currently exposes a project named `Moog-1.0` at `https://jtphbubpqiqgwvmhzyoy.supabase.co`. Its existing schema includes `Share`, `RateLimit`, `AbuseReport` and Prisma migrations, so it is not assumed to be the SportsConnect database. Do not apply the SportsConnect migration to that project unless you confirm it is intended to host both apps.
+SportsConnect is connected to the dedicated Supabase project named `Sportsconnet` (project ref `bzdtywxwehjpsheirfup`, region `ap-southeast-1`) at `https://bzdtywxwehjpsheirfup.supabase.co`. The separate `Moog-1.0` project belongs to another app and was left unchanged.
 
-The sample env file is prefilled with that project's URL and its **publishable key** for convenience. Replace these values with a dedicated SportsConnect project before testing live backend features.
+The sample env file is prefilled with the SportsConnect project's URL and its **publishable key**. Publishable keys are safe for browser use when Row Level Security policies are enabled; never use a service-role or secret key in `NEXT_PUBLIC_*` variables.
+
+The database has been initialized with the initial SportsConnect schema and a follow-up hardening migration. The 12 application tables have RLS enabled. The conversation-creation RPC is intentionally callable by authenticated users and validates the caller and recipient.
 
 ## Configure the database
 
-The schema migration is stored at:
+The schema is versioned in these migrations:
 
-`supabase/migrations/20261010000100_initial_sportsconnect_schema.sql`
+- `supabase/migrations/20261010030035_initial_sportsconnect_schema.sql`
+- `supabase/migrations/20261010030207_harden_sportsconnect_schema.sql`
 
-Use a Supabase project intended for SportsConnect. After installing/using the Supabase CLI and authenticating, link your chosen project and apply the migration:
+Both migration versions are recorded on the dedicated remote SportsConnect project. To keep local schema changes in sync later, link the project and run:
 
 ```bash
 npx supabase login
-npx supabase link --project-ref YOUR_PROJECT_REF
-npx supabase db push
+npx supabase link --project-ref bzdtywxwehjpsheirfup
+npx supabase db pull
+npx supabase migration list
 ```
 
-Review the migration and confirm the project reference before running `db push`. The migration creates profiles, posts/media, follows, reactions, comments, opportunities/applications, conversations/members/messages and notifications, along with indexes, auth-profile bootstrap logic, notification triggers and Row Level Security policies.
-
-**This repository's migration has not been applied to a remote database by the frontend build process.** Apply it only to the intended SportsConnect Supabase project.
+The initial schema creates profiles, posts/media, follows, reactions, comments, opportunities/applications, conversations/members/messages and notifications, with indexes, profile creation/notification triggers and RLS policies. The hardening migration restricts helper/trigger function execution, moves the conversation membership helper to a non-exposed `private` schema, and adds supporting indexes.
 
 ## API reference
 
@@ -140,7 +142,9 @@ Sportsconnet/
 │   └── supabase/server.ts
 ├── supabase/
 │   ├── config.toml
-│   └── migrations/202610100001_initial_sportsconnect_schema.sql
+│   └── migrations/
+│       ├── 20261010030035_initial_sportsconnect_schema.sql
+│       └── 20261010030207_harden_sportsconnect_schema.sql
 ├── .env.example
 ├── .github/workflows/ci.yml
 ├── package.json
