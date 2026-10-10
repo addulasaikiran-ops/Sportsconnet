@@ -1,9 +1,9 @@
 name: SportsConnect Monitoring
 
 on:
-  workflow_dispatch:
   schedule:
-    - cron: "*/5 * * * *"
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -15,63 +15,63 @@ concurrency:
 jobs:
   health-check:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 4
     steps:
-      - name: Check application, database, and latency
+      - name: Checkout repository
+        uses: actions/checkout@v5
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: npm install
+      - name: Check application, Supabase, and latency
         id: check
+        continue-on-error: true
         env:
-          MONITOR_BASE_URL: ${{ secrets.MONITOR_BASE_URL }}
-        run: |
-          set +e
-          if [ -z "$MONITOR_BASE_URL" ]; then
-            echo "failure=MONITOR_BASE_URL secret is not configured" >> "$GITHUB_OUTPUT"
-            echo "elapsed_ms=0" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          url="${MONITOR_BASE_URL%/}/api/health"
-          result=$(curl --silent --show-error --max-time 15 --output /tmp/health.json --write-out '%{http_code} %{time_total}' "$url" 2>/tmp/curl-error.txt)
-          curl_status=$?
-          http_code=$(echo "$result" | awk '{print $1}')
-          elapsed=$(echo "$result" | awk '{print $2}')
-          elapsed_ms=$(awk -v t="${elapsed:-0}" 'BEGIN { printf "%d", t * 1000 }')
-          echo "elapsed_ms=$elapsed_ms" >> "$GITHUB_OUTPUT"
-          echo "http_code=${http_code:-000}" >> "$GITHUB_OUTPUT"
-
-          if [ "$curl_status" -ne 0 ]; then
-            echo "failure=Health endpoint request failed: $(cat /tmp/curl-error.txt)" >> "$GITHUB_OUTPUT"
-          elif [ "$http_code" != "200" ]; then
-            echo "failure=Health endpoint returned HTTP $http_code" >> "$GITHUB_OUTPUT"
-          elif [ "$elapsed_ms" -gt 2000 ]; then
-            echo "failure=Health endpoint latency exceeded 2000ms (${elapsed_ms}ms)" >> "$GITHUB_OUTPUT"
-          else
-            echo "failure=" >> "$GITHUB_OUTPUT"
-          fi
-
-          if [ -f /tmp/health.json ]; then
-            echo "Health response (safe summary):"
-            node -e 'const h=require("/tmp/health.json"); console.log(JSON.stringify({ok:h.ok, service:h.service, checks:h.checks, timestamp:h.timestamp}))' || true
-          fi
-
+          SPORTSCONNECT_BASE_URL: ${{ secrets.SPORTSCONNECT_BASE_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+          UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+          UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+        run: node scripts/monitor.mjs
       - name: Send email alert
-        if: steps.check.outputs.failure != ''
+        if: steps.check.outputs.alert_required == 'true'
         uses: dawidd6/action-send-mail@v4
         with:
           server_address: ${{ secrets.ALERT_SMTP_SERVER }}
           server_port: ${{ secrets.ALERT_SMTP_PORT }}
           username: ${{ secrets.ALERT_SMTP_USERNAME }}
           password: ${{ secrets.ALERT_SMTP_PASSWORD }}
-          subject: "[SportsConnect] Monitoring alert"
+          subject: "[SportsConnect] Monitoring incident detected"
           to: ${{ secrets.ALERT_EMAIL_TO }}
           from: ${{ secrets.ALERT_EMAIL_FROM }}
           body: |
-            SportsConnect monitoring detected a problem.
+            SportsConnect monitoring detected an issue.
 
-            Reason: ${{ steps.check.outputs.failure }}
-            HTTP status: ${{ steps.check.outputs.http_code }}
-            Measured latency (ms): ${{ steps.check.outputs.elapsed_ms }}
-            Repository: ${{ github.repository }}
+            Details: ${{ steps.check.outputs.monitor_summary }}
+
+            Check the hosting logs, Supabase status, and Sentry for more details:
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            This alert excludes secrets and raw request data.
+      - name: Send recovery email
+        if: steps.check.outputs.recovery_required == 'true'
+        uses: dawidd6/action-send-mail@v4
+        with:
+          server_address: ${{ secrets.ALERT_SMTP_SERVER }}
+          server_port: ${{ secrets.ALERT_SMTP_PORT }}
+          username: ${{ secrets.ALERT_SMTP_USERNAME }}
+          password: ${{ secrets.ALERT_SMTP_PASSWORD }}
+          subject: "[SportsConnect] Monitoring recovered"
+          to: ${{ secrets.ALERT_EMAIL_TO }}
+          from: ${{ secrets.ALERT_EMAIL_FROM }}
+          body: |
+            SportsConnect health checks have recovered.
+
+            Details: ${{ steps.check.outputs.monitor_summary }}
+
             Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-
-            Check the hosting logs, Supabase status, and Sentry for more details.
-            This email may contain operational details; do not forward it publicly.
+      - name: Fail workflow when monitor detects an incident
+        if: steps.check.outcome == 'failure'
+        run: exit 1
