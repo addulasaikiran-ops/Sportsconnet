@@ -91,6 +91,21 @@ All API routes are implemented with Next.js App Router Route Handlers. Authentic
 
 Pagination endpoints accept `limit` and `page` query parameters. The maximum page size is capped server-side. Search and mutation payloads are validated with Zod. The database uses RLS to limit updates to the current user and restrict messages to conversation members.
 
+## Rate limiting
+
+API rate limits use Upstash Redis so counters are shared across Vercel/serverless instances. Create an Upstash Redis database, then set `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` as **server-only** environment variables in `.env.local` and later in the hosting environment. Never prefix these variables with `NEXT_PUBLIC_`. Local development skips the limiter if credentials are absent; production returns `503` when the limiter is not configured or its Redis service is unavailable, rather than silently disabling protection. Exceeded limits return `429` and `Retry-After`.
+
+Initial limits:
+
+- Login: 5 requests per 15 minutes per IP
+- Signup: 5 requests per hour per IP
+- Profile search and feed reads: 60 requests per minute per IP
+- Post creation: 10 requests per 10 minutes per authenticated user
+- Message sending: 30 requests per minute per authenticated user
+- Media uploads: 10 requests per hour per authenticated user
+
+IP identifiers are hashed before being used as Redis keys. Tune these limits after observing legitimate traffic and abuse patterns.
+
 ## Environment variables
 
 `.env.example` documents the supported values:
