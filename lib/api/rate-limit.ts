@@ -7,7 +7,7 @@ type RateLimitPolicy = {
   name: string;
   limit: number;
   window: "15 m" | "1 h" | "1 m" | "10 m";
-  identifier: string;
+  scope: "ip" | "user";\n  key: string;
 };
 
 const limiters = new Map<string, Ratelimit>();
