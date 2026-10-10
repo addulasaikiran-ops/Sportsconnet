@@ -2,13 +2,7 @@ import { NextResponse } from "next/server";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import type { ZodType } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-
-export class ApiError extends Error {
-  constructor(message: string, public readonly status: number = 500) {
-    super(message);
-    this.name = "ApiError";
-  }
-}
+import { ApiError } from "@/lib/api/error";
 
 export function apiErrorResponse(error: unknown) {
   if (error instanceof ApiError) {
