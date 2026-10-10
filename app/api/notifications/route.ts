@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { apiErrorResponse, isUuid, parseJson, requireUser } from "@/lib/api/http";
+import { apiErrorResponse, parseJson, requireUser } from "@/lib/api/http";
 
 const markReadSchema = z.object({
   ids: z.array(z.string().uuid()).max(100).optional(),
